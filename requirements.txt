@@ -1,0 +1,16 @@
+torch
+torchvision
+torchaudio
+albumentations
+scikit-learn
+pandas
+numpy
+matplotlib
+tqdm
+wandb
+pillow
+opencv-python
+h5py
+jupyter
+ipykernel
+seaborn
