@@ -112,6 +112,28 @@ def train(args):
     G.apply(weights_init)
     D.apply(weights_init)
 
+    # 3.5 Auto-Resume Checkpoint Logic
+    import glob
+    g_ckpts = glob.glob(os.path.join(args.checkpoint_dir, "G_ita_6tones_*.pth"))
+    if g_ckpts:
+        try:
+            # Extract integers by splitting off the '.pth' and the last underscore dynamically
+            epochs = [int(os.path.basename(f).split("_")[-1].split(".")[0]) for f in g_ckpts]
+            latest_epoch = max(epochs)
+            
+            g_ckpt_path = os.path.join(args.checkpoint_dir, f"G_ita_6tones_{latest_epoch}.pth")
+            d_ckpt_path = os.path.join(args.checkpoint_dir, f"D_ita_6tones_{latest_epoch}.pth")
+            
+            print(f"🔄 Found existing checkpoint. Resuming model weights from Epoch {latest_epoch}...")
+            # We map_location safely to guarantee no GPU/CPU state mismatches occur
+            G.load_state_dict(torch.load(g_ckpt_path, map_location=device))
+            if os.path.exists(d_ckpt_path):
+                D.load_state_dict(torch.load(d_ckpt_path, map_location=device))
+                
+            args.start_epoch = latest_epoch + 1
+        except Exception as e:
+            print(f"⚠️ Failed to automatically load checkpoint: {e}")
+
     # 4. Optimizers & Losses
     optimizer_G = optim.Adam(G.parameters(), lr=args.lr, betas=(args.b1, args.b2))
     optimizer_D = optim.Adam(D.parameters(), lr=args.lr, betas=(args.b1, args.b2))
