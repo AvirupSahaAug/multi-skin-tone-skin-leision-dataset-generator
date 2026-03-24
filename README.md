@@ -46,5 +46,4 @@ The project includes a **Streamlit Dashboard** that allows researchers to monito
 
 ### Key Highlights
 - **6 Target Tones**: Spanning the Fitzpatrick scale from Very Light (50.0 ITA) to Dark (-10.0 ITA).
-- **Auto-Resume**: Automatically finds and continues training from the latest checkpoint.
 - **Fairness-First**: Specifically designed to create balanced medical datasets for more equitable AI.
