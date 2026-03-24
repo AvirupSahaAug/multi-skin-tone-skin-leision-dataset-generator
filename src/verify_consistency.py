@@ -19,11 +19,11 @@ def verify_consistency(args):
 
     # Load weights if path provided
     if args.g_path and os.path.exists(args.g_path):
-        G.load_state_dict(torch.load(args.g_path, map_location=device))
+        G.load_state_dict(torch.load(args.g_path, map_location=device, weights_only=True))
         print(f"Loaded Generator from {args.g_path}")
     
     if args.d_path and os.path.exists(args.d_path):
-        D.load_state_dict(torch.load(args.d_path, map_location=device))
+        D.load_state_dict(torch.load(args.d_path, map_location=device, weights_only=True))
         print(f"Loaded Discriminator from {args.d_path}")
 
     G.eval()

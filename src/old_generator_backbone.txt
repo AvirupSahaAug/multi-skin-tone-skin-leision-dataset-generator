@@ -1,0 +1,60 @@
+class DynamicMultiHeadGenerator(nn.Module):
+    def __init__(self, z_dim=100, num_classes=7, num_heads=6, img_size=128, channels=3, conv_dim=64):
+        super(DynamicMultiHeadGenerator, self).__init__()
+        self.img_size = img_size
+        self.init_size = img_size // 16
+        self.num_heads = num_heads
+        
+        # Label embedding for the disease
+        self.label_emb = nn.Embedding(num_classes, z_dim)
+        
+        self.l1 = nn.Sequential(
+            nn.Linear(z_dim * 2, conv_dim * 8 * self.init_size ** 2)
+        )
+
+        # Shared Backbone (Structure-Locked: All spatial upsampling happens here)
+        self.backbone = nn.Sequential(
+            nn.BatchNorm2d(conv_dim * 8),
+            nn.Upsample(scale_factor=2), # 8 -> 16
+            nn.Conv2d(conv_dim * 8, conv_dim * 4, 3, stride=1, padding=1),
+            nn.BatchNorm2d(conv_dim * 4, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            
+            nn.Upsample(scale_factor=2), # 16 -> 32
+            nn.Conv2d(conv_dim * 4, conv_dim * 2, 3, stride=1, padding=1),
+            nn.BatchNorm2d(conv_dim * 2, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+            
+            nn.Upsample(scale_factor=2), # 32 -> 64
+            nn.Conv2d(conv_dim * 2, conv_dim, 3, stride=1, padding=1),
+            nn.BatchNorm2d(conv_dim, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Upsample(scale_factor=2), # 64 -> 128
+            nn.Conv2d(conv_dim, conv_dim // 2, 3, stride=1, padding=1),
+            nn.BatchNorm2d(conv_dim // 2, 0.8),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        # Create N dynamic heads for N skin tones
+        self.heads = nn.ModuleList([self._make_head(conv_dim // 2, channels) for _ in range(num_heads)])
+
+    def _make_head(self, in_channels, out_channels):
+        # Heads now only represent color mapping, keeping structure locked
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, z, labels):
+        c = self.label_emb(labels)
+        x = torch.cat([z, c], 1)
+        
+        out = self.l1(x)
+        out = out.view(out.shape[0], -1, self.init_size, self.init_size)
+        
+        features = self.backbone(out)
+        
+        # Return a list of N images, one for each skin tone
+        outputs = [head(features) for head in self.heads]
+        return outputs
